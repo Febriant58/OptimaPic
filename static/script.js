@@ -13,19 +13,36 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
-    // Saat user submit form (klik upload)
+    function validateFile(file) {
+        if (!file) return false;
+        const maxSize = 2 * 1024 * 1024; // 2 MB
+        if (file.size > maxSize) {
+            alert("⚠️ Ukuran file terlalu besar! Maksimal 2 MB.");
+            return false;
+        }
+        return true;
+    }
+
+    // Saat user submit form
     if (uploadForm) {
-        uploadForm.addEventListener("submit", function () {
+        uploadForm.addEventListener("submit", function (e) {
+            const file = fileInput.files[0];
+            if (!validateFile(file)) {
+                e.preventDefault();
+                return;
+            }
             showLoading(true);
         });
     }
 
-    // Saat user pilih file langsung
+    // Saat user pilih file dari input
     if (fileInput) {
         fileInput.addEventListener("change", function () {
             if (fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+                if (!validateFile(file)) return;
                 showLoading(true);
-                uploadForm.submit();
+                setTimeout(() => uploadForm.submit(), 300); // delay halus
             }
         });
     }
@@ -46,14 +63,16 @@ document.addEventListener("DOMContentLoaded", function () {
             dropArea.classList.remove("hover");
             const files = e.dataTransfer.files;
             if (files && files.length > 0) {
+                const file = files[0];
+                if (!validateFile(file)) return;
                 fileInput.files = files;
                 showLoading(true);
-                uploadForm.submit();
+                setTimeout(() => uploadForm.submit(), 300);
             }
         });
     }
 
-    // Setelah halaman selesai dimuat ulang (misal hasil sudah tampil)
+    // Setelah halaman reload (hasil tampil)
     window.addEventListener("load", function () {
         setTimeout(() => showLoading(false), 400);
     });
