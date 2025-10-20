@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OptimaPic</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h1><span class="blue">Optima</span>Pic</h1>
+    <p class="subtitle">Mini Project</p>
+    <h3 class="desc">Tingkatkan resolusi gambar Anda dengan mudah</h3>
+
+    <!-- Upload Section -->
+    <div class="upload-section">
+        <h2>Unggah Foto</h2>
+        <p class="hint">Unggah foto anda dan tunggu hasilnya dengan sekali klik</p>
+        
+        <form id="uploadForm" action="/upload" method="post" enctype="multipart/form-data">
+            <div id="dropArea">
+                <p>Seret dan letakkan gambar, atau 
+                   <label for="file" class="choose-file">pilih file</label>
+                </p>
+                <input type="file" id="file" name="file" accept="image/*" onchange="this.form.submit()">
+            </div>
+        </form>
+    </div>
+
+    <!-- Hasil -->
+    {% if enhanced_image %}
+    <div class="result-section">
+        <h2>Hasil</h2>
+
+        <div class="result-images">
+            <div class="image-box">
+                <img src="{{ url_for('static', filename=original_image) }}" alt="Sebelum" class="result-img">
+                <p class="img-label">Sebelum</p>
+            </div>
+            <div class="image-box">
+                <img src="{{ url_for('static', filename=enhanced_image) }}" alt="Sesudah" class="result-img">
+                <p class="img-label">Sesudah</p>
+            </div>
+        </div>
+
+        <!-- Tombol Download dan waktu proses -->
+        <div class="download-section">
+            <a href="{{ url_for('download', filename=enhanced_image.split('/')[-1]) }}" class="download-btn">
+                Download Hasil
+            </a>
+
+            {% if process_time %}
+                <p class="process-time">⏱ Waktu pemrosesan: {{ process_time }} detik</p>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Pesan error -->
+    {% if error %}
+    <div class="result-section">
+        <p class="process-time" style="background-color: rgba(255, 0, 0, 0.2); color: #fdd;">
+            ⚠️ {{ error }}
+        </p>
+    </div>
+    {% endif %}
+
+    <!-- Footer -->
+    <footer class="main-footer">
+        <div class="footer-container">
+
+            <div class="footer-column">
+                <h3>Company</h3>
+                <ul>
+                    <li><a href="#">About Us</a></li>
+                    <li><a href="#">Why Choose Us</a></li>
+                    <li><a href="#">Pricing</a></li>
+                    <li><a href="#">Testimonial</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-column">
+                <h3>Resources</h3>
+                <ul>
+                    <li><a href="#">Privacy Policy</a></li>
+                    <li><a href="#">Terms and Condition</a></li>
+                    <li><a href="#">Blog</a></li>
+                    <li><a href="#">Contact Us</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-column">
+                <h3>Product</h3>
+                <ul>
+                    <li><a href="#">Project Management</a></li>
+                    <li><a href="#">Time Tracker</a></li>
+                    <li><a href="#">Time Schedule</a></li>
+                    <li><a href="#">Lead Generate</a></li>
+                    <li><a href="#">Remote Collaboration</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-column newsletter">
+                <h2><span class="blue">Optima</span>Pic</h2>
+                <p>Subscribe to our Newsletter</p>
+                <form class="subscribe-form">
+                    <input type="email" placeholder="Enter your Email" required>
+                    <button type="submit">Subscribe</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="footer-bottom">
+            <p>Copyright ©2025</p>
+            <div class="social-icons">
+                <a href="#"><img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/facebook.svg" alt="Facebook"></a>
+                <a href="#"><img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/twitter.svg" alt="Twitter"></a>
+                <a href="#"><img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/instagram.svg" alt="Instagram"></a>
+                <a href="#"><img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/linkedin.svg" alt="LinkedIn"></a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay hidden">
+        <div class="spinner"></div>
+        <p>Processing your image, please wait...</p>
+    </div>
+
+    <!-- Script -->
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
