@@ -14,14 +14,17 @@
     <!-- Upload Section -->
     <div class="upload-section">
         <h2>Unggah Foto</h2>
-        <p class="hint">Unggah foto anda dan tunggu hasilnya dengan sekali klik</p>
+        <p class="hint">Unggah foto Anda dan tunggu hasilnya dengan sekali klik</p>
+        <p class="hint" style="color:#c00;font-weight:500;">
+            ⚠️ Ukuran maksimal file <strong>2 MB</strong>. Gambar besar akan otomatis diperkecil.
+        </p>
         
         <form id="uploadForm" action="/upload" method="post" enctype="multipart/form-data">
             <div id="dropArea">
                 <p>Seret dan letakkan gambar, atau 
                    <label for="file" class="choose-file">pilih file</label>
                 </p>
-                <input type="file" id="file" name="file" accept="image/*" onchange="this.form.submit()">
+                <input type="file" id="file" name="file" accept="image/*">
             </div>
         </form>
     </div>
@@ -30,7 +33,6 @@
     {% if enhanced_image %}
     <div class="result-section">
         <h2>Hasil</h2>
-
         <div class="result-images">
             <div class="image-box">
                 <img src="{{ url_for('static', filename=original_image) }}" alt="Sebelum" class="result-img">
@@ -42,7 +44,6 @@
             </div>
         </div>
 
-        <!-- Tombol Download dan waktu proses -->
         <div class="download-section">
             <a href="{{ url_for('download', filename=enhanced_image.split('/')[-1]) }}" class="download-btn">
                 Download Hasil
@@ -67,7 +68,6 @@
     <!-- Footer -->
     <footer class="main-footer">
         <div class="footer-container">
-
             <div class="footer-column">
                 <h3>Company</h3>
                 <ul>
@@ -123,10 +123,29 @@
     <!-- Loading Overlay -->
     <div id="loadingOverlay" class="loading-overlay hidden">
         <div class="spinner"></div>
-        <p>Processing your image, please wait...</p>
+        <p>Memproses gambar Anda, mohon tunggu...</p>
     </div>
 
     <!-- Script -->
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script>
+        const form = document.getElementById('uploadForm');
+        const fileInput = document.getElementById('file');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+
+        form.addEventListener('submit', (e) => {
+            const file = fileInput.files[0];
+            if (!file) return;
+            if (file.size > 2 * 1024 * 1024) { // 2 MB limit
+                e.preventDefault();
+                alert("⚠️ Ukuran file terlalu besar! Maksimal 2 MB.");
+                return;
+            }
+            loadingOverlay.classList.remove('hidden');
+        });
+
+        fileInput.addEventListener('change', () => {
+            form.requestSubmit();
+        });
+    </script>
 </body>
 </html>
