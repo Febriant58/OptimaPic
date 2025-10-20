@@ -2,7 +2,7 @@ from flask import Flask, request, render_template, send_file
 import onnxruntime as rt
 import numpy as np
 from PIL import Image
-import os, time, mimetypes, glob, hashlib
+import os, time, mimetypes, glob, hashlib, gc
 
 # =========================================================
 # Konfigurasi Aplikasi Flask
@@ -19,23 +19,23 @@ os.makedirs(RESULTS_FOLDER, exist_ok=True)
 mimetypes.add_type('image/png', '.png')
 
 # =========================================================
-# Inisialisasi (Lazy Load + Cache)
+# Lazy Load Model ONNX
 # =========================================================
 ONNX_LOADED = False
 session_pre = None
 session_end = None
-model_cache = {}  # Cache hasil enhancement
-
+model_cache = {}  # cache hasil model (hemat waktu & RAM)
 
 def load_onnx_model():
-    """Muat model ONNX hanya saat pertama kali dipanggil"""
+    """Muat model hanya sekali saat pertama digunakan"""
     global session_pre, session_end, ONNX_LOADED
     if not ONNX_LOADED:
         try:
             print("⏳ Memuat model ONNX (lazy load)...")
             providers = ['CPUExecutionProvider']
             opt = rt.SessionOptions()
-            opt.intra_op_num_threads = 1  # Optimasi CPU single-core (Railway)
+            opt.intra_op_num_threads = 1  # Optimasi CPU di Railway
+            opt.execution_mode = rt.ExecutionMode.ORT_SEQUENTIAL
 
             session_pre = rt.InferenceSession("esrgan-small-pre.onnx", sess_options=opt, providers=providers)
             session_end = rt.InferenceSession("esrgan-small-end.onnx", sess_options=opt, providers=providers)
@@ -45,10 +45,17 @@ def load_onnx_model():
         except Exception as e:
             print(f"⚠️ Gagal memuat model ONNX: {e}")
 
+# =========================================================
+# Fungsi peningkatan citra dengan cache & cleanup
+# =========================================================
+def cleanup_cache():
+    """Hapus cache lama lebih dari 60 detik"""
+    current_time = time.time()
+    expired = [key for key, (_, ts) in model_cache.items() if current_time - ts > 60]
+    for key in expired:
+        del model_cache[key]
+        print("🧹 Cache lama dihapus otomatis (timeout).")
 
-# =========================================================
-# Fungsi Peningkatan Citra (dengan cache & penghematan RAM)
-# =========================================================
 def enhance_image_onnx(img):
     global model_cache
 
@@ -59,9 +66,8 @@ def enhance_image_onnx(img):
     img_hash = hashlib.md5(img.tobytes()).hexdigest()
     if img_hash in model_cache:
         print("🧠 Cache hit: hasil sebelumnya digunakan.")
-        return model_cache[img_hash]
+        return model_cache[img_hash][0]
 
-    # Proses citra ke tensor
     img = img.convert('RGB')
     img_np = np.array(img).astype(np.float32) / 255.0
     img_tensor = np.transpose(img_np, (2, 0, 1))
@@ -85,14 +91,14 @@ def enhance_image_onnx(img):
     output_final = np.transpose(output_final, (1, 2, 0))
     enhanced_img = Image.fromarray(output_final)
 
-    # Simpan ke cache (maksimal 3 entri untuk hemat RAM)
-    model_cache[img_hash] = enhanced_img
-    if len(model_cache) > 3:
-        oldest = next(iter(model_cache))
-        del model_cache[oldest]
-        print("🧹 Cache lama dihapus untuk hemat memori.")
+    # Simpan cache
+    model_cache[img_hash] = (enhanced_img, time.time())
+    cleanup_cache()
 
-    print("💾 Cache baru disimpan.")
+    # Bersihkan tensor dari RAM
+    del img_np, img_tensor, output_pre, output_final
+    gc.collect()
+
     return enhanced_img
 
 
@@ -112,16 +118,19 @@ def upload():
     file = request.files['file']
 
     try:
-        # Buka citra dan kurangi resolusi jika terlalu besar
-        img = Image.open(file.stream).convert('RGB')
+        # Cek ukuran file
         file.stream.seek(0, os.SEEK_END)
         file_size = file.stream.tell()
         file.stream.seek(0)
+        if file_size > 2_000_000:  # >2 MB
+            return render_template('index.html', error="⚠️ File terlalu besar (maksimal 2MB di Railway).")
 
-        if file_size > 1_000_000:  # >1 MB
-            print(f"⚠️ File besar ({round(file_size/1024/1024,2)} MB), sedang diresize agar hemat RAM.")
-            max_size = (720, 720)
-            img.thumbnail(max_size, Image.LANCZOS)
+        img = Image.open(file.stream).convert('RGB')
+
+        # Auto resize kalau dimensinya terlalu besar
+        if max(img.size) > 720:
+            print(f"⚠️ Resolusi besar {img.size}, auto resize ke 720px.")
+            img.thumbnail((720, 720), Image.LANCZOS)
 
         # Bersihkan hasil lama
         for old_file in glob.glob(os.path.join(app.config['RESULTS_FOLDER'], 'enhanced_*.png')):
@@ -131,32 +140,33 @@ def upload():
             try: os.remove(old_file)
             except: pass
 
-        # Proses peningkatan
-        start_time = time.perf_counter()
+        # Proses
+        start = time.perf_counter()
         enhanced_img = enhance_image_onnx(img)
-        process_time = round(time.perf_counter() - start_time, 2)
+        duration = round(time.perf_counter() - start, 2)
 
         # Simpan hasil
-        unique_id = str(int(time.time()))
-        original_filename = f'original_{unique_id}.png'
-        enhanced_filename = f'enhanced_{unique_id}.png'
+        ts = str(int(time.time()))
+        original_filename = f'original_{ts}.png'
+        enhanced_filename = f'enhanced_{ts}.png'
 
-        original_path = os.path.join(app.config['UPLOAD_FOLDER'], original_filename)
-        enhanced_path = os.path.join(app.config['RESULTS_FOLDER'], enhanced_filename)
+        img.save(os.path.join(app.config['UPLOAD_FOLDER'], original_filename))
+        enhanced_img.save(os.path.join(app.config['RESULTS_FOLDER'], enhanced_filename))
 
-        img.save(original_path)
-        enhanced_img.save(enhanced_path)
+        # Bersihkan RAM setelah selesai
+        gc.collect()
 
         return render_template(
             'index.html',
             original_image=f'uploads/{original_filename}',
             enhanced_image=f'results/{enhanced_filename}',
-            process_time=process_time,
+            process_time=duration,
             upscale_factor=4
         )
 
     except Exception as e:
         print(f"❌ Error saat memproses gambar: {e}")
+        gc.collect()
         return render_template('index.html', error=f"Terjadi kesalahan: {str(e)}")
 
 
