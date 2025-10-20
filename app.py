@@ -33,15 +33,17 @@ try:
     if not os.path.exists("esrgan-small-pre.onnx") or not os.path.exists("esrgan-small-end.onnx"):
         raise FileNotFoundError("Model ONNX tidak ditemukan di direktori utama.")
 
-    session_pre = rt.InferenceSession("esrgan-small-pre.onnx")
-    session_end = rt.InferenceSession("esrgan-small-end.onnx")
+    # Mode InferenceSession untuk CPU-only agar ringan di Railway
+    providers = ['CPUExecutionProvider']
+    session_pre = rt.InferenceSession("esrgan-small-pre.onnx", providers=providers)
+    session_end = rt.InferenceSession("esrgan-small-end.onnx", providers=providers)
+
     print("✅ Model ONNX berhasil dimuat.")
     ONNX_LOADED = True
 
 except Exception as e:
     print(f"⚠️ Gagal memuat model ONNX: {e}")
     print("Pastikan file 'esrgan-small-pre.onnx' dan 'esrgan-small-end.onnx' ada di direktori ini.")
-
 
 # =========================================================
 # Fungsi Peningkatan Citra dengan ONNX
@@ -76,7 +78,6 @@ def enhance_image_onnx(img):
 
     return Image.fromarray(output_final)
 
-
 # =========================================================
 # ROUTES
 # =========================================================
@@ -99,28 +100,21 @@ def upload():
     try:
         img = Image.open(file.stream).convert('RGB')
 
-        # Hapus hasil lama agar folder tidak menumpuk
+        # Bersihkan file lama
         for old_file in glob.glob(os.path.join(app.config['RESULTS_FOLDER'], 'enhanced_*.png')):
-            try:
-                os.remove(old_file)
-            except:
-                pass
+            try: os.remove(old_file)
+            except: pass
 
         for old_file in glob.glob(os.path.join(app.config['UPLOAD_FOLDER'], 'original_*.png')):
-            try:
-                os.remove(old_file)
-            except:
-                pass
+            try: os.remove(old_file)
+            except: pass
 
-        # Timer mulai
         start_time = time.perf_counter()
 
         # Proses peningkatan
         enhanced_img = enhance_image_onnx(img)
 
-        # Timer selesai
-        end_time = time.perf_counter()
-        process_time = round(end_time - start_time, 2)
+        process_time = round(time.perf_counter() - start_time, 2)
 
         # Simpan hasil
         unique_id = str(int(time.time()))
@@ -133,14 +127,10 @@ def upload():
         img.save(original_path)
         enhanced_img.save(enhanced_path)
 
-        # Kirim path relatif ke template
-        original_image = f'uploads/{original_filename}'
-        enhanced_image = f'results/{enhanced_filename}'
-
         return render_template(
             'index.html',
-            original_image=original_image,
-            enhanced_image=enhanced_image,
+            original_image=f'uploads/{original_filename}',
+            enhanced_image=f'results/{enhanced_filename}',
             process_time=process_time,
             upscale_factor=4
         )
@@ -152,7 +142,6 @@ def upload():
 
 @app.route('/download/<filename>')
 def download(filename):
-    """Download hasil citra yang telah ditingkatkan"""
     if 'enhanced_' not in filename or '..' in filename:
         return "File tidak valid.", 404
 
@@ -165,8 +154,8 @@ def download(filename):
 
 
 # =========================================================
-# ENTRY POINT
+# ENTRY POINT (disesuaikan untuk Railway & lokal)
 # =========================================================
 if __name__ == '__main__':
-    print("Aplikasi berjalan di http://127.0.0.1:5000")
-    app.run(debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=False)
