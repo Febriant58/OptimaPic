@@ -1,4 +1,7 @@
-Flask==3.0.3
-onnxruntime==1.19.0
-numpy
-Pillow
+Flask==3.1.2
+onnxruntime==1.18.0
+numpy==2.0.2
+Pillow==10.3.0
+realesrgan==0.3.0
+basicsr==1.4.2
+facexlib==0.3.0
