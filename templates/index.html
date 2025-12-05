@@ -11,7 +11,6 @@
     <p class="subtitle">Mini Project</p>
     <h3 class="desc">Tingkatkan resolusi gambar Anda dengan mudah</h3>
 
-    <!-- Upload Section -->
     <div class="upload-section">
         <h2>Unggah Foto</h2>
         <p class="hint">Unggah foto Anda dan tunggu hasilnya dengan sekali klik</p>
@@ -22,14 +21,13 @@
         <form id="uploadForm" action="/upload" method="post" enctype="multipart/form-data">
             <div id="dropArea">
                 <p>Seret dan letakkan gambar, atau 
-                   <label for="file" class="choose-file">pilih file</label>
+                    <label for="file" class="choose-file">pilih file</label>
                 </p>
                 <input type="file" id="file" name="file" accept="image/*">
             </div>
         </form>
     </div>
 
-    <!-- Hasil -->
     {% if enhanced_image %}
     <div class="result-section">
         <h2>Hasil</h2>
@@ -56,16 +54,14 @@
     </div>
     {% endif %}
 
-    <!-- Pesan error -->
     {% if error %}
     <div class="result-section">
-        <p class="process-time" style="background-color: rgba(255, 0, 0, 0.2); color: #fdd;">
+        <p class="process-time" style="background-color: rgba(255, 0, 0, 0.2); color: #c00; border: 1px solid #f00;">
             ⚠️ {{ error }}
         </p>
     </div>
     {% endif %}
 
-    <!-- Footer -->
     <footer class="main-footer">
         <div class="footer-container">
             <div class="footer-column">
@@ -120,33 +116,11 @@
         </div>
     </footer>
 
-    <!-- Loading Overlay -->
     <div id="loadingOverlay" class="loading-overlay hidden">
         <div class="spinner"></div>
         <p>Memproses gambar Anda, mohon tunggu...</p>
     </div>
 
-    <!-- Script -->
-    <script>
-        const form = document.getElementById('uploadForm');
-        const fileInput = document.getElementById('file');
-        const loadingOverlay = document.getElementById('loadingOverlay');
-
-        form.addEventListener('submit', (e) => {
-            const file = fileInput.files[0];
-            if (!file) return;
-            if (file.size > 2 * 1024 * 1024) { // 2 MB limit
-                e.preventDefault();
-                alert("⚠️ Ukuran file terlalu besar! Maksimal 2 MB.");
-                return;
-            }
-            loadingOverlay.classList.remove('hidden');
-        });
-
-        fileInput.addEventListener('change', () => {
-            form.requestSubmit();
-        });
-    </script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
-
