@@ -4,8 +4,13 @@ document.addEventListener("DOMContentLoaded", function () {
     const dropArea = document.getElementById("dropArea");
     const loading = document.getElementById("loadingOverlay");
 
+    // Pastikan semua elemen penting ada
+    if (!uploadForm || !fileInput || !dropArea || !loading) {
+        // console.error("Elemen HTML penting tidak ditemukan.");
+        return;
+    }
+
     function showLoading(show) {
-        if (!loading) return;
         if (show) {
             loading.classList.remove("hidden");
         } else {
@@ -18,62 +23,52 @@ document.addEventListener("DOMContentLoaded", function () {
         const maxSize = 2 * 1024 * 1024; // 2 MB
         if (file.size > maxSize) {
             alert("⚠️ Ukuran file terlalu besar! Maksimal 2 MB.");
+            // Reset input agar user bisa upload lagi tanpa refresh
+            fileInput.value = ""; 
             return false;
         }
         return true;
     }
 
-    // Saat user submit form
-    if (uploadForm) {
-        uploadForm.addEventListener("submit", function (e) {
-            const file = fileInput.files[0];
-            if (!validateFile(file)) {
-                e.preventDefault();
-                return;
-            }
-            showLoading(true);
-        });
-    }
-
     // Saat user pilih file dari input
-    if (fileInput) {
-        fileInput.addEventListener("change", function () {
-            if (fileInput.files.length > 0) {
-                const file = fileInput.files[0];
-                if (!validateFile(file)) return;
-                showLoading(true);
-                setTimeout(() => uploadForm.submit(), 300); // delay halus
-            }
-        });
-    }
+    fileInput.addEventListener("change", function () {
+        if (fileInput.files.length > 0) {
+            const file = fileInput.files[0];
+            if (!validateFile(file)) return;
+            
+            showLoading(true);
+            // Submit form setelah validasi
+            setTimeout(() => uploadForm.submit(), 100); 
+        }
+    });
 
     // Drag & Drop Area
-    if (dropArea) {
-        dropArea.addEventListener("dragover", (e) => {
-            e.preventDefault();
-            dropArea.classList.add("hover");
-        });
+    dropArea.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        dropArea.classList.add("hover");
+    });
 
-        dropArea.addEventListener("dragleave", () => {
-            dropArea.classList.remove("hover");
-        });
+    dropArea.addEventListener("dragleave", () => {
+        dropArea.classList.remove("hover");
+    });
 
-        dropArea.addEventListener("drop", (e) => {
-            e.preventDefault();
-            dropArea.classList.remove("hover");
-            const files = e.dataTransfer.files;
-            if (files && files.length > 0) {
-                const file = files[0];
-                if (!validateFile(file)) return;
-                fileInput.files = files;
-                showLoading(true);
-                setTimeout(() => uploadForm.submit(), 300);
-            }
-        });
-    }
+    dropArea.addEventListener("drop", (e) => {
+        e.preventDefault();
+        dropArea.classList.remove("hover");
+        const files = e.dataTransfer.files;
+        if (files && files.length > 0) {
+            const file = files[0];
+            if (!validateFile(file)) return;
+            
+            // Pindahkan file ke input dan submit
+            fileInput.files = files;
+            showLoading(true);
+            setTimeout(() => uploadForm.submit(), 100);
+        }
+    });
 
-    // Setelah halaman reload (hasil tampil)
+    // Setelah halaman reload (hasil tampil), sembunyikan loading screen
     window.addEventListener("load", function () {
-        setTimeout(() => showLoading(false), 400);
+        setTimeout(() => showLoading(false), 400); 
     });
 });
