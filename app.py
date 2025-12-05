@@ -43,7 +43,6 @@ def load_onnx_model():
             ONNX_LOADED = True
             print("✅ Model ONNX berhasil dimuat.")
         except Exception as e:
-            # Penting: Jika gagal load model, aplikasi masih bisa running tapi fungsi enhance akan gagal
             print(f"⚠️ Gagal memuat model ONNX: {e}") 
 
 def cleanup_cache():
@@ -61,7 +60,6 @@ def enhance_image_onnx(img):
     if not ONNX_LOADED:
         load_onnx_model()
 
-    # Jika model gagal dimuat, raise error
     if not ONNX_LOADED:
          raise RuntimeError("Model ONNX tidak tersedia atau gagal dimuat.")
 
@@ -110,7 +108,6 @@ def enhance_image_onnx(img):
 def cleanup_worker(max_files_to_keep=3, hours_to_keep=0.5):
     """Menghapus file dari RESULTS_FOLDER berdasarkan waktu (30 menit) dan jumlah (max 3)."""
     
-    # Menghitung batas waktu (30 menit yang lalu)
     cutoff_time = time.time() - (hours_to_keep * 3600)
     folder = app.config['RESULTS_FOLDER']
     
@@ -122,13 +119,11 @@ def cleanup_worker(max_files_to_keep=3, hours_to_keep=0.5):
             # 1. AMBIL SEMUA FILE DAN URUTKAN BERDASARKAN WAKTU MODIFIKASI
             files = glob.glob(os.path.join(folder, '*.png'))
             files_with_time = [(os.path.getmtime(f), f) for f in files]
-            # Urutkan dari yang PALING LAMA ke yang TERBARU
-            files_with_time.sort() 
+            files_with_time.sort() # Urutkan dari yang PALING LAMA ke yang TERBARU
             
             current_file_count = len(files_with_time)
             
             # 2. HAPUS BERDASARKAN WAKTU (File yang sangat lama, >30 menit)
-            # Iterasi pada list files_with_time
             for file_mod_time, file_path in files_with_time:
                 if file_mod_time < cutoff_time:
                     files_to_delete.append(file_path)
@@ -156,8 +151,7 @@ def cleanup_worker(max_files_to_keep=3, hours_to_keep=0.5):
             print(f"🗑️ Disk Cleanup: {deleted_count} file lama dihapus.")
         
         gc.collect()
-        # Tidur selama 5 menit sebelum cek lagi
-        time.sleep(5 * 60) 
+        time.sleep(5 * 60) # Tidur selama 5 menit
 
 # =========================================================
 # ROUTES
@@ -181,10 +175,12 @@ def upload():
 
         img = Image.open(file.stream).convert('RGB')
 
-        # Auto resize kalau dimensinya terlalu besar
-        if max(img.size) > 720:
-            print(f"⚠️ Resolusi besar {img.size}, auto resize ke 720px.")
-            img.thumbnail((720, 720), Image.LANCZOS)
+        # === MODIFIKASI AGRESIF UNTUK MENGHEMAT RAM RAILWAY FREE TIER ===
+        MAX_DIMENSION = 500  # DIUBAH DARI 720 menjadi 500 untuk hemat RAM
+        if max(img.size) > MAX_DIMENSION:
+            print(f"⚠️ Resolusi besar {img.size}, auto resize ke {MAX_DIMENSION}px.")
+            img.thumbnail((MAX_DIMENSION, MAX_DIMENSION), Image.LANCZOS)
+        # === END MODIFIKASI AGRESIF ===
 
         # Proses
         start = time.perf_counter()
